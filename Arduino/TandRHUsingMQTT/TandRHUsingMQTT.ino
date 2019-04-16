@@ -54,13 +54,9 @@ void setup() {
   pinMode(ledPin, OUTPUT);
   attachInterrupt(digitalPinToInterrupt(pushButtonPin), capturePushButton, CHANGE);
 
-  // Establish EEPROM
-
-  // Establish IP and internet
-  //const char* wifiName = "rad";
-  //const char* wifiPass = "aP@ssw0rd";
-  //const char* wifiName = "notbroadcasting";
-  //const char* wifiPass = "dinofish1";
+  // Establish wifi credentials
+  // Rename template file to 'WifiSettings.h' and edit file with appropriate 
+  //  wifi settings
   const char* wifiName = MyWifiName;
   const char* wifiPass = MyWifiPass;
 
