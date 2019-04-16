@@ -13,6 +13,8 @@
 
 // Sensor board library
 #include "SparkFun_Si7021_Breakout_Library.h"
+
+#include "WifiSettings.h"
 //**************************************************
 // Static location of my MQTT server
 #define mqtt_server "192.168.1.25"
@@ -57,8 +59,10 @@ void setup() {
   // Establish IP and internet
   //const char* wifiName = "rad";
   //const char* wifiPass = "aP@ssw0rd";
-  const char* wifiName = "notbroadcasting";
-  const char* wifiPass = "dinofish1";
+  //const char* wifiName = "notbroadcasting";
+  //const char* wifiPass = "dinofish1";
+  const char* wifiName = MyWifiName;
+  const char* wifiPass = MyWifiPass;
 
   Serial.print("Connecting to ");
   Serial.println(wifiName);
