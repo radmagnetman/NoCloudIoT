@@ -1,5 +1,6 @@
 /**************************************************
- * 
+ * Program to get T/RH data from sensor package and 
+ * broadcast in via MQTT from an ESP8266. 
  *************************************************/
 #include <ESP8266WiFi.h>  // ESP8266 Wifi library
 #include <PubSubClient.h> // MQTT library
@@ -61,7 +62,7 @@ static TimeChangeRule usEDT = {"EDT", Second, Sun, Mar, 2, -300};  //UTC - 5 hou
 static TimeChangeRule usEST = {"EST", First, Sun, Nov, 2, -360};   //UTC - 6 hours - change this as needed
 Timezone usEastern(usEDT, usEST);
 const char * ampm[] = {"AM", "PM"} ;
-void establishLocalTime() {
+bool establishLocalTime() {
   if (WiFi.status() == WL_CONNECTED) { 
     Serial.println("Getting internet time");  
     timeClient.update();
@@ -73,9 +74,13 @@ void establishLocalTime() {
     Serial.print(":");Serial.print(second(localTime));
     Serial.print(" ");Serial.println(ampm[isPM(localTime)]);
     lastSync = currentms/1000;
+    return true;
   }
-  else
-    Serial.println("No internet connection");
+  else 
+  {
+    Serial.println("Getting internet time failed");
+    return false;
+  }
 }
 
 //**************************************************
@@ -118,11 +123,13 @@ void reconnect() {
 
 //**************************************************
 // Called when MQTT message arrives
+// Parse commands in this function.
 void callback(char* topic, byte* thisPayload, unsigned int lPayload) {
-  // ESP.restart();
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
+  // The reset doesn't put the ESP back in a working state if the 
+  //  serial cable is still connected to the device. 
   if (topic[0] == 'r' && topic[1] == 'e' && topic[2] == 's' && topic[3] == 'e' && topic[4] == 't')
   {
     Serial.println("Reseting ESP in 3 seconds...");
@@ -185,7 +192,11 @@ void setup() {
 
   // Establish local time
   currentms = millis();
-  establishLocalTime();
+  while (!establishLocalTime())
+  {
+    Serial.println("Attempting again in 5 seconds");
+    delay(5000);
+  }
   
   
   // Establish MQTT
@@ -196,7 +207,8 @@ void setup() {
   sensor.begin();
 }
 
-// Time tracking variables
+//=============================================================
+// Timing variables
 unsigned long prevBlink_ms = 0;
 const long blinkRate = 250;
 unsigned long prevCheckButton_ms = 0;
@@ -211,47 +223,48 @@ void loop() {
   // get current time tick
   currentms = millis();
 
+  // Blink LED
   if (currentms - prevBlink_ms >= blinkRate)
   {
     prevBlink_ms = currentms;
     handleBlink();
   }
-  
+
+  // Sync time
   if (currentms - prevSynchTime_ms >= synchTimeRate)
   {
     prevSynchTime_ms = currentms;
     establishLocalTime();
   }
-  
+
+  // Get T/RH and send to MQTT server
   if (currentms - prevBroadcast_ms >= broadcastRate)
   {
     prevBroadcast_ms = currentms;
     handleBroadcast();
-    //Serial.print("Toggle "); Serial.println(ledToggleState1);
   }
 
+  // Check to see if push button is pressed, timing on this
+  //  is such as to prevent switch bounce from triggering 
+  //  multiple calls.
   if (currentms - prevCheckButton_ms >= checkButtonRate)
   {
     if (pushButtonPressed == true)
     {
       lastPress_ms = currentms;
-      Serial.println("Looking for MQTT packets");
-      handleSubscribe();
     }
   }
-
-
 }
 
 //-------------------------------
-
+// Function doesn't do anything right now, but if push button is
+//  pressed this is where interrupt work goes
 void handleSubscribe() {
   pushButtonPressed = false;
-  
 }
 
+// Toggle the LED
 void handleBlink() {
-  //Serial.print("Toggle ");Serial.println(ledToggleState1);
   if (ledToggleState == 1)
     ledState = !ledState;
   else
@@ -259,13 +272,17 @@ void handleBlink() {
   digitalWrite(ledPin, ledState);
 }
 
-char payloadVal[] = "xxx.xx\0";        
-char payloadTime[] = "xxxxxxxxxx\0";
-char payloadT[] = "xxxxxxxxxx xxx.xx\0";
-char payloadRH[] = "xxxxxxxxxx xxx.xx\0";
+//**************************************************
+// Get, format, and send data for MQTT
+//  Character arrays used over Strings for stability
+static char payloadVal[] = "xxx.xx\0";        
+static char payloadTime[] = "xxxxxxxxxx\0";
+static char payloadT[] = "xxxxxxxxxx xxx.xx\0";
+static char payloadRH[] = "xxxxxxxxxx xxx.xx\0";
 static int timeSinceLastSync;
 
 void handleBroadcast() {
+  // Get sensor data
   RH = sensor.getRH();
   T = sensor.getTemp();
   Serial.print(" T "); Serial.println(T);
@@ -276,10 +293,13 @@ void handleBroadcast() {
   }
   client.loop();
   
-  
+  // Convert local stored time to character string
   timeSinceLastSync = currentms/1000-lastSync;
   itoa(localTime+timeSinceLastSync,payloadTime,10);
 
+  // Convert temperature value to string and write to 
+  //  array. Insert converted time stamp into same array.
+  //  Publish string to MQTT server
   dtostrf(T, 7, 2, payloadVal);
   for (int i = 0;i < 11;i++) {
     payloadT[i] = payloadTime[i];
@@ -288,6 +308,10 @@ void handleBroadcast() {
     payloadT[i+10] = payloadVal[i];
   }
   client.publish("testSensors/T", payloadT, true);
+
+  // Convert RH value to string and write to 
+  //  array. Insert converted time stamp into same array
+  //  Publish string to MQTT server
   dtostrf(RH, 7, 2, payloadVal);
   for (int i = 0;i < 11;i++) {
     payloadRH[i] = payloadTime[i];
