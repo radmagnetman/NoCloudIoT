@@ -1,4 +1,4 @@
-![Fritzing wiring diagram](https://raw.githubusercontent.com/radmagnetman/HouseSensors/master/houseTandRHWireless/houseTandRHWireless.png)
+![Fritzing wiring diagram](https://raw.githubusercontent.com/radmagnetman/NoCloudIoT/master/Hardware/Platform_ESP8266_TandRH/houseTandRHWireless.png)
 
 This code was written for the following hardware
 
