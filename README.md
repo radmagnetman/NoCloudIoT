@@ -1,12 +1,17 @@
 # NoCloudIoT
 
-Code for my "No Cloud" IoT project.
+Code and designs for my "No Cloud" IoT project.
 
 I disliked the idea of my home brew IoT devices communicating with a cloud service so I have started making a code base for a server(s) and IoT objects. 
 
 Very much a work in progress..
 
 ## Design decisions
+
+### Data flow
+
+![Data flow](https://raw.githubusercontent.com/radmagnetman/NoCloudIoT/master/data_flow_diagram.jpg)
+
 
 ### Why MQTT?
 
