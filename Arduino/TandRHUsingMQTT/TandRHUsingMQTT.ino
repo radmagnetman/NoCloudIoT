@@ -56,6 +56,8 @@ NTPClient timeClient(ntpUDP, NTP_ADDRESS, NTP_OFFSET, NTP_INTERVAL);
 
 //**************************************************
 // Internet time
+// See simpleGetTimeExample for better descriptions of what's going
+//  on in this function.
 static unsigned long epochTime;
 static time_t localTime, utc;
 static TimeChangeRule usEDT = {"EDT", Second, Sun, Mar, 2, -300};  //UTC - 5 hours - change this as needed
