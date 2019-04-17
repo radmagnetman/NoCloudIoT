@@ -223,7 +223,7 @@ unsigned long prevBroadcast_ms = 0;
 const long broadcastRate = 3000;
 unsigned long lastPress_ms = 0;
 unsigned long prevSynchTime_ms = 0;
-const int synchTimeRate = 60*1000;
+const int synchTimeRate = 5*60*1000;
 
 void loop() {
   // get current time tick

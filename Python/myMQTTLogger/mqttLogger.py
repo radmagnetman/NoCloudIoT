@@ -17,7 +17,7 @@ print("connecting to broker ",broker)
 client.connect(broker)#connect
 client.loop_start() #start loop to process received messages
 print("subscribing ")
-client.subscribe("wxSensors")#subscribe
+client.subscribe("testSensors/T")#subscribe
 time.sleep(2)
 # print("publishing ")
 #client.publish("house/bulb1","on")#publish
