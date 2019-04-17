@@ -16,7 +16,7 @@
 // Sensor board library
 #include "SparkFun_Si7021_Breakout_Library.h"
 
-// 'Rename WifiSettingsTemplate.h' file to 'WifiSettings.h' 
+// Rename 'WifiSettingsTemplate.h' file to 'WifiSettings.h' 
 //  and edit file with appropriate wifi settings
 #include "WifiSettings.h"
 //**************************************************
@@ -130,13 +130,14 @@ void callback(char* topic, byte* thisPayload, unsigned int lPayload) {
   Serial.print("] ");
   // The reset doesn't put the ESP back in a working state if the 
   //  serial cable is still connected to the device. 
-  if (topic[0] == 'r' && topic[1] == 'e' && topic[2] == 's' && topic[3] == 'e' && topic[4] == 't')
+  if (strncmp(topic,"reset",5) == 0)
   {
     Serial.println("Reseting ESP in 3 seconds...");
     delay(3000);
     ESP.restart();
   }
-  else {
+  else if (strncmp(topic,"ledToggle",9) == 0)
+  {
     for (int i = 0; i < lPayload; i++) {
       char receivedChar = (char)thisPayload[i];
       Serial.print(receivedChar);
@@ -147,6 +148,9 @@ void callback(char* topic, byte* thisPayload, unsigned int lPayload) {
     }
     Serial.println();
   }
+  else
+  {Serial.println("Unrecognized command via MQTT: ");}
+  
 }
 
 //=============================================================
