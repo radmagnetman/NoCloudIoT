@@ -243,7 +243,7 @@ void handleBlink() {
   if (ledToggleState == true)
     ledState = !ledState;
   else
-    ledState = false;
+    ledState = true;
   digitalWrite(ledPin, ledState);
 }
 
