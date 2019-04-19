@@ -19,7 +19,9 @@ static char myName[] = "xxxx\0";
 
 static bool pushButtonPressed = false;
 static bool ledState = false;
-static byte ledToggleState = 1;
+static bool ledToggleState = true;
+static bool relayState = false;
+static bool mqttConnectStatus = false;
 
 //**************************************************
 // Hardware parameters 
@@ -45,6 +47,7 @@ char convertHexToChar(byte in) {
 //  mechanism to prevent switch bounce from interfering 
 void capturePushButton() {
   pushButtonPressed = true;
+  detachInterrupt(digitalPinToInterrupt(pushButtonPin));
 }
 
 //**************************************************
@@ -57,7 +60,8 @@ void reconnect() {
     if (client.connect("ESP8266Client")) {
       Serial.println("connected");
       // Once connected subscribe to topics
-      client.subscribe("toggleS");
+      client.subscribe("setRelay");
+      client.subscribe("turnOffLED");
       client.subscribe("reset");
     } else {
       Serial.print("failed, rc=");
@@ -72,33 +76,50 @@ void reconnect() {
 //**************************************************
 // Called when MQTT message arrives
 // Parse commands in this function.
+static char CMD_reset[] = "reset";
+static char CMD_turnOffLED[] = "turnOffLED";
+static char CMD_setRelay[] = "setRelay";
+static char receivedChar;
 void callback(char* topic, byte* thisPayload, unsigned int lPayload) {
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
   // The reset doesn't put the ESP back in a working state if the 
   //  serial cable is still connected to the device. 
-  if (strncmp(topic,"reset",5) == 0)
+  if (strncmp(topic,CMD_reset,5) == 0)
   {
-    Serial.println("Reseting ESP in 3 seconds...");
+    Serial.println("Reseting in 3 seconds...");
     delay(3000);
     ESP.restart();
   }
-  else if (strncmp(topic,"toggleS",7) == 0)
+  else if (strncmp(topic,CMD_setRelay,8) == 0)
   {
     for (int i = 0; i < lPayload; i++) {
-      char receivedChar = (char)thisPayload[i];
+      receivedChar = (char)thisPayload[0];
       Serial.print(receivedChar);
       if (receivedChar == '0')
+      {
         digitalWrite(relayPin,LOW);
+        relayState = false;
+      }
       if (receivedChar == '1')
+      {
         digitalWrite(relayPin,HIGH);
+        relayState = true;
+      }
     }
-    Serial.println();
+  }
+  else if (strncmp(topic,CMD_turnOffLED,10) == 0)
+  {
+    receivedChar = (char)thisPayload[0];
+    if (receivedChar == '0')
+      ledToggleState = false;
+    if (receivedChar == '1')
+      ledToggleState = true;
   }
   else
   {Serial.println("Unrecognized command via MQTT: ");}
-  
+  Serial.println();
 }
 
 //=============================================================
@@ -158,6 +179,9 @@ unsigned long prevCheckButton_ms = 0;
 const int checkButtonRate = 1000;
 unsigned long lastPress_ms = 0;
 unsigned long prevSynchTime_ms = 0;
+unsigned long prevreconnect_ms = 0;
+const long reconnectRate = 5000;
+
 
 void loop() {
   // get current time tick
@@ -176,27 +200,67 @@ void loop() {
   //  multiple calls.
   if (currentms - prevCheckButton_ms >= checkButtonRate)
   {
+    prevCheckButton_ms = currentms;
     if (pushButtonPressed == true)
     {
-      lastPress_ms = currentms;
+      handleButtonPress();
     }
+  }
+
+  if (currentms - prevreconnect_ms >= reconnectRate)
+  {
+    prevreconnect_ms = currentms;
+    if (!client.connected()) {
+      reconnect();
+    }
+    client.loop();
   }
 }
 
 //-------------------------------
 // Function doesn't do anything right now, but if push button is
 //  pressed this is where interrupt work goes
-void handleSubscribe() {
+void handleButtonPress() {
+  if (relayState)
+  {
+    digitalWrite(relayPin,LOW);
+    Serial.println("[Button] Relay OFF");
+  }
+  else
+  {
+    digitalWrite(relayPin,HIGH);
+    Serial.println("[Button] Relay ON");
+  }
+  
+  relayState = !relayState;
+  attachInterrupt(digitalPinToInterrupt(pushButtonPin), capturePushButton, CHANGE);
   pushButtonPressed = false;
+  broadcastRelayState();  
 }
 
 // Toggle the LED
 void handleBlink() {
-  if (ledToggleState == 1)
+  if (ledToggleState == true)
     ledState = !ledState;
   else
     ledState = false;
   digitalWrite(ledPin, ledState);
+}
+
+static char relayPayload[] = "Relay is Oxx\0";
+void broadcastRelayState()
+{
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+
+  if (relayState)
+    {relayPayload[10] = 'n';relayPayload[11] = ' ';}
+  else
+    {relayPayload[10] = 'f';relayPayload[11] = 'f';}
+  
+  client.publish("testSensors/RH", relayPayload, true);
 }
 
 
