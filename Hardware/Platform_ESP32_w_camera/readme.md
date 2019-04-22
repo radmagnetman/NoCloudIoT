@@ -1,22 +1,13 @@
-![Fritzing wiring diagram](https://raw.githubusercontent.com/radmagnetman/NoCloudIoT/master/Hardware/Platform_ESP8266_TandRH/houseTandRHWireless.png)
+# Hardware notes for ESP32 with camera
 
-This code was written for the following hardware
+Install ESP32 board module
 
-* HUZZAH ESP8266 - https://learn.adafruit.com/adafruit-huzzah-esp8266-breakout/overview
+Arduino IDE -> File -> Preferences -> Add the following to "Additional Board Manager URLs"
 
-* SparkFun Si7021 - https://www.sparkfun.com/products/13763
+https://dl.espressif.com/dl/package_esp32_index.json
 
-Complete build list coming soon!
+Tools -> Boards -> Board Manager...
 
-For programming ESP8266
+Search for "ESP32" and add board from Espressif Systems
 
-* USB to TTL Serial Cable - https://www.adafruit.com/product/954
-
-Wiring for ESP8266
-
-| Serial Cable | ESP8266 |
-| ------------- | ------------- |
-| BLACK | GND (pin 6)  |
-|RED | V+  (pin 4)|
-|GREEN | RX (pin 3)|
-|WHITE | TX (pin 2)|
+Check antenna is on board not to external connector [Link](https://robotzero.one/esp32-cam-arduino-ide/)
