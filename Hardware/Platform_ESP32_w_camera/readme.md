@@ -10,4 +10,4 @@ Tools -> Boards -> Board Manager...
 
 Search for "ESP32" and add board from Espressif Systems
 
-Check antenna is on board not to external connector [Link] (https://robotzero.one/esp32-cam-arduino-ide/)
+Check antenna is on board not to external connector [Link](https://robotzero.one/esp32-cam-arduino-ide/)
