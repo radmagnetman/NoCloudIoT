@@ -6,12 +6,19 @@
 
 #include "WifiSettings.h"
 //**************************************************
-// Static location of my MQTT server
+// MQTT Settings
 #define mqtt_server "192.168.1.25"
 
+static char CMD_reset[] = "xxxx/reset";
+static int LEN_reset = 10;
+static char CMD_toggleLEDBlink[] = "xxxx/toggleLEDBlink";
+static int LEN_toggleLEDBlink = 19;
+static char CMD_setRelay[] = "xxxx/setRelay";
+static int LEN_setRelay = 13;
+static char CMD_returnVerNum[] = "xxxx/returnVerNum";
+static int LEN_returnVerNum = 17;
 //**************************************************
 // Global variables
-
 static unsigned long currentms;
 
 static byte mac[6];
@@ -30,6 +37,7 @@ static bool mqttConnectStatus = false;
 const byte ledPin = 13;
 const byte pushButtonPin = 0;
 const byte relayPin = 12;
+
 //**************************************************
 // Network declarations
 WiFiClient espClient;
@@ -45,26 +53,19 @@ char convertHexToChar(byte in) {
 }
 
 //**************************************************
-// Called via pushbutton interrupt, using latch logic
-//  mechanism to prevent switch bounce from interfering 
-void capturePushButton() {
-  pushButtonPressed = true;
-  detachInterrupt(digitalPinToInterrupt(pushButtonPin));
-}
-
-//**************************************************
 // MQTT reconnect function.
 void reconnect() {
   // Loop until we're reconnected
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect("ESP8266Client")) {
+    if (client.connect(myName)) {
       Serial.println("connected");
       // Once connected subscribe to topics
-      client.subscribe("setRelay");
-      client.subscribe("turnOffLED");
-      client.subscribe("reset");
+      client.subscribe(CMD_reset);
+      client.subscribe(CMD_toggleLEDBlink);
+      client.subscribe(CMD_setRelay);
+      client.subscribe(CMD_returnVerNum);
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -78,23 +79,21 @@ void reconnect() {
 //**************************************************
 // Called when MQTT message arrives
 // Parse commands in this function.
-static char CMD_reset[] = "reset";
-static char CMD_turnOffLED[] = "turnOffLED";
-static char CMD_setRelay[] = "setRelay";
 static char receivedChar;
+static char firmwareTopic[] = "xxxx/firmwareVer\0";
 void callback(char* topic, byte* thisPayload, unsigned int lPayload) {
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
   // The reset doesn't put the ESP back in a working state if the 
   //  serial cable is still connected to the device. 
-  if (strncmp(topic,CMD_reset,5) == 0)
+  if (strncmp(topic,CMD_reset,LEN_reset) == 0)
   {
     Serial.println("Reseting in 3 seconds...");
     delay(3000);
     ESP.restart();
   }
-  else if (strncmp(topic,CMD_setRelay,8) == 0)
+  else if (strncmp(topic,CMD_setRelay,LEN_setRelay) == 0)
   {
     for (int i = 0; i < lPayload; i++) {
       receivedChar = (char)thisPayload[0];
@@ -111,17 +110,30 @@ void callback(char* topic, byte* thisPayload, unsigned int lPayload) {
       }
     }
   }
-  else if (strncmp(topic,CMD_turnOffLED,10) == 0)
+  else if (strncmp(topic,CMD_toggleLEDBlink,LEN_toggleLEDBlink) == 0)
   {
     receivedChar = (char)thisPayload[0];
-    if (receivedChar == '0')
-      ledToggleState = false;
-    if (receivedChar == '1')
-      ledToggleState = true;
+    ledToggleState = !ledToggleState;
+  }
+  else if (strncmp(topic,CMD_returnVerNum,LEN_returnVerNum) == 0)
+  {
+    Serial.print("My firmware version number is ");
+    Serial.println(myFirmwareVer);
+    for (int i = 0;i < 4;i++)
+      firmwareTopic[i] = myName[i];
+    Serial.println(firmwareTopic);
+    client.publish(firmwareTopic, myFirmwareVer, true);
   }
   else
   {Serial.println("Unrecognized command via MQTT: ");}
   Serial.println();
+}
+//**************************************************
+// Called via pushbutton interrupt, using latch logic
+//  mechanism to prevent switch bounce from interfering 
+void capturePushButton() {
+  pushButtonPressed = true;
+  detachInterrupt(digitalPinToInterrupt(pushButtonPin));
 }
 
 //=============================================================
@@ -168,6 +180,14 @@ void setup() {
   Serial.print("My ID is ");Serial.println(myName);
 
   // Establish MQTT
+  // Copy over myName to command set.
+  for (int i = 0;i < 4;i++)
+  {
+    CMD_reset[i] = myName[i];
+    CMD_toggleLEDBlink[i] = myName[i];
+    CMD_setRelay[i] = myName[i];
+    CMD_returnVerNum[i] = myName[i];
+  }
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
 
@@ -209,6 +229,7 @@ void loop() {
     }
   }
 
+  // Reconnect to MQTT server every 5 seconds
   if (currentms - prevreconnect_ms >= reconnectRate)
   {
     prevreconnect_ms = currentms;
@@ -220,8 +241,7 @@ void loop() {
 }
 
 //-------------------------------
-// Function doesn't do anything right now, but if push button is
-//  pressed this is where interrupt work goes
+// 
 void handleButtonPress() {
   if (relayState)
   {
@@ -249,20 +269,24 @@ void handleBlink() {
   digitalWrite(ledPin, ledState);
 }
 
-static char relayPayload[] = "Relay is Oxx\0";
+static char relayPayload[] = "x\0";
+static char relayTopic[] = "xxxx/relayState\0";
 void broadcastRelayState()
 {
   if (!client.connected()) {
     reconnect();
   }
   client.loop();
-
-  if (relayState)
-    {relayPayload[10] = 'n';relayPayload[11] = ' ';}
-  else
-    {relayPayload[10] = 'f';relayPayload[11] = 'f';}
   
-  client.publish("testSensors/RH", relayPayload, true);
+  if (relayState)
+    relayPayload[0] = '1';
+  else
+    relayPayload[0] = '0';
+
+  for (int i = 0;i < 4;i++)
+    {relayTopic[i] = myName[i];}
+  
+  client.publish(relayTopic, relayPayload, true);
 }
 
 
