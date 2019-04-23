@@ -9,6 +9,13 @@
 // MQTT Settings
 #define mqtt_server "192.168.1.25"
 
+// MQTT Commands
+// Each command is made up of a topic where the first 
+//  4 characters are the last 4 digits of the MAC 
+//  address (array is updated after MAC address is
+//  determined) followed by the command.
+//  LEN_ variables are the number of characters in 
+//  each topic
 static char CMD_reset[] = "xxxx/reset";
 static int LEN_reset = 10;
 static char CMD_toggleLEDBlink[] = "xxxx/toggleLEDBlink";
@@ -17,11 +24,13 @@ static char CMD_setRelay[] = "xxxx/setRelay";
 static int LEN_setRelay = 13;
 static char CMD_returnVerNum[] = "xxxx/returnVerNum";
 static int LEN_returnVerNum = 17;
+static char CMD_returnRelayState[] = "xxxx/returnRelayState";
+static int LEN_returnRelayState = 21;
 //**************************************************
 // Global variables
-static unsigned long currentms;
+static unsigned long currentms; 
 
-static byte mac[6];
+static byte mac[6];             
 static char myName[] = "xxxx\0";
 
 static char myFirmwareVer[] = "v1.0\0";
@@ -66,6 +75,7 @@ void reconnect() {
       client.subscribe(CMD_toggleLEDBlink);
       client.subscribe(CMD_setRelay);
       client.subscribe(CMD_returnVerNum);
+      client.subscribe(CMD_returnRelayState);
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -81,6 +91,7 @@ void reconnect() {
 // Parse commands in this function.
 static char receivedChar;
 static char firmwareTopic[] = "xxxx/firmwareVer\0";
+static char stateTopic[] = "xxxx/relayState";
 void callback(char* topic, byte* thisPayload, unsigned int lPayload) {
   Serial.print("Message arrived [");
   Serial.print(topic);
@@ -124,6 +135,18 @@ void callback(char* topic, byte* thisPayload, unsigned int lPayload) {
     Serial.println(firmwareTopic);
     client.publish(firmwareTopic, myFirmwareVer, true);
   }
+  else if (strncmp(topic,CMD_returnRelayState,LEN_returnRelayState) == 0)
+  {
+    static char statePayload[] = "x\0";
+    Serial.print("Relay state is ");
+    if (relayState)
+    {Serial.println("ON");statePayload[0] = '1';}
+    else
+    {Serial.println("OFF");statePayload[0] = '0';}
+    for (int i = 0;i < 4;i++)
+      stateTopic[i] = myName[i];
+    client.publish(stateTopic, statePayload, true);
+  }
   else
   {Serial.println("Unrecognized command via MQTT: ");}
   Serial.println();
@@ -140,6 +163,7 @@ void capturePushButton() {
 void setup() {
   // Establish arduino specifics
   Serial.begin(9600);
+  Serial.println("Powering up...");
   pinMode(ledPin, OUTPUT);
   pinMode(relayPin,OUTPUT);
   digitalWrite(relayPin,LOW);
@@ -187,6 +211,7 @@ void setup() {
     CMD_toggleLEDBlink[i] = myName[i];
     CMD_setRelay[i] = myName[i];
     CMD_returnVerNum[i] = myName[i];
+    CMD_returnRelayState[i] = myName[i];
   }
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
