@@ -285,19 +285,25 @@ static char payloadVal[] = "xxx.xx\0";
 static char payloadTime[] = "xxxxxxxxxx\0";
 static char payloadT[] = "xxxxxxxxxx xxx.xx\0";
 static char payloadRH[] = "xxxxxxxxxx xxx.xx\0";
+static char topicT[] = "xxxx/T\0";
+static char topicRH[] = "xxxx/RH\0";
 static int timeSinceLastSync;
 
 void handleBroadcast() {
   // Get sensor data
   RH = sensor.getRH();
   T = sensor.getTemp();
-  Serial.print(" T "); Serial.println(T);
-  Serial.print("RH "); Serial.println(RH);
+  Serial.print(" T "); Serial.print(localTime+timeSinceLastSync);Serial.print(" ");Serial.println(T);
+  Serial.print("RH "); Serial.print(localTime+timeSinceLastSync);Serial.print(" ");Serial.println(RH);
 
   if (!client.connected()) {
     reconnect();
   }
   client.loop();
+
+  for (int i = 0;i < 4;i++)
+    {topicT[i] = myName[i];topicRH[i] = myName[i];}
+
   
   // Convert local stored time to character string
   timeSinceLastSync = currentms/1000-lastSync;
@@ -313,7 +319,7 @@ void handleBroadcast() {
   for (int i = 0;i < 7;i++) {
     payloadT[i+10] = payloadVal[i];
   }
-  client.publish("testSensors/T", payloadT, true);
+  client.publish(topicT, payloadT, true);
 
   // Convert RH value to string and write to 
   //  array. Insert converted time stamp into same array
@@ -325,7 +331,7 @@ void handleBroadcast() {
   for (int i = 0;i < 7;i++) {
     payloadRH[i+10] = payloadVal[i];
   }
-  client.publish("testSensors/RH", payloadRH, true);
+  client.publish(topicRH, payloadRH, true);
 }
 
 //=============================================================

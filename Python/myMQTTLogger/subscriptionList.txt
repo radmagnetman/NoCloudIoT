@@ -1,2 +1,2 @@
-testSensors/T
-testSensors/RH
+5F80/T
+5F80/RH
