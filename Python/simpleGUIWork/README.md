@@ -17,3 +17,13 @@ Above seems to bork GUI software. Temporary fix: `sudo mv /usr/share/X11/xorg.co
 After GUI desktop is running on Pi run locally `sudo xhost +local:pi`. Then from SSH run `export DISPLAY=:0.0` before python script ([source](https://www.raspberrypi.org/forums/viewtopic.php?t=124021)). 
 
 Unsure how much of this is persistent. 
+
+## Backlight
+
+Turn on and off:
+
+`sudo sh -c 'echo "0" > /sys/class/backlight/soc\:backlight/brightness'`
+
+`sudo sh -c 'echo "1" > /sys/class/backlight/soc\:backlight/brightness'`
+
+([source](https://learn.adafruit.com/adafruit-pitft-28-inch-resistive-touchscreen-display-raspberry-pi/backlight-control) Couldn't make PWM work)
