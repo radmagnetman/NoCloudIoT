@@ -8,6 +8,8 @@
 
 ## Getting started
 
+Below may not apply any more. Fresh install then following the directions at the top of this [script](https://github.com/adafruit/Raspberry-Pi-Installer-Scripts/blob/master/adafruit-pitft.sh) made it work.
+
 [TFT installer](https://learn.adafruit.com/adafruit-pitft-3-dot-5-touch-screen-for-raspberry-pi/easy-install-2)
 
 Above seems to bork GUI software. Temporary fix: `sudo mv /usr/share/X11/xorg.conf.d/99-fbturbo.conf ~` ([source](https://github.com/hypriot/x11-on-HypriotOS/issues/5)) before executing `startx`.
