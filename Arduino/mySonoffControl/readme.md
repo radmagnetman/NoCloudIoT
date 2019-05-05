@@ -15,3 +15,5 @@ where the "xx" in the ip address is the location of the MQTT server and "xxxx" i
 * `setRelay` - Sent with a message of "0" or "1" to turn the Sonoff realy off or on
 * `returnVerNum` - Sent with empty message. Sonoff then broadcasts to "xxxx/firmwareVer" topic with message containing the firmware version
 * `returnRelayState` - Returns a 0 or 1 on the topic "xxxx/relayState"
+
+Subscribing to topic `xxxx/#` (where `xxxx` is the last 4 digits of the MAC address) will allow the MQTT server to pass along all messages pertaining to this particular Sonoff
