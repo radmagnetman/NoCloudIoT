@@ -169,6 +169,7 @@ void callback(char* topic, byte* thisPayload, unsigned int lPayload) {
         relayState = true;
       }
     }
+    broadcastRelayState();
   }
   else if (strncmp(topic,CMD_toggleLEDBlink,LEN_toggleLEDBlink) == 0)
   {
