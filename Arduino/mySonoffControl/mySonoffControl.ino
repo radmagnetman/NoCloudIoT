@@ -162,7 +162,7 @@ void capturePushButton() {
 //=============================================================
 void setup() {
   // Establish arduino specifics
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.println("Powering up...");
   pinMode(ledPin, OUTPUT);
   pinMode(relayPin,OUTPUT);
@@ -180,28 +180,11 @@ void setup() {
 
   WiFi.begin(wifiName, wifiPass);
 
-Serial.print("WL_CONNECTED ");
-Serial.println(WL_CONNECTED);
-Serial.print("WL_NO_SHIELD ");
-Serial.println(WL_NO_SHIELD);
-Serial.print("WL_IDLE_STATUS ");
-Serial.println(WL_IDLE_STATUS);
-Serial.print("WL_NO_SSID_AVAIL ");
-Serial.println(WL_NO_SSID_AVAIL);
-Serial.print("WL_SCAN_COMPLETED ");
-Serial.println(WL_SCAN_COMPLETED);
-Serial.print("WL_CONNECT_FAILED ");
-Serial.println(WL_CONNECT_FAILED);
-Serial.print("WL_CONNECTION_LOST ");
-Serial.println(WL_CONNECTION_LOST);
-Serial.print("WL_DISCONNECTED ");
-Serial.println(WL_DISCONNECTED);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    //Serial.print(".");
-    Serial.println(WiFi.status());
-    //WiFi.printDiag(Serial);
+    Serial.print(".");
+    //Serial.println(WiFi.status());
   }
 
   Serial.println("");
