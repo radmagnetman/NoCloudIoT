@@ -48,7 +48,7 @@ static unsigned long lastSync;
 static byte mac[6];             
 static char myName[] = "xxxx\0";
 
-static char myFirmwareVer[] = "v1.0\0";
+static char myFirmwareVer[] = "v1.1\0";
 
 static bool pushButtonPressed = false;
 static bool ledState = false;
