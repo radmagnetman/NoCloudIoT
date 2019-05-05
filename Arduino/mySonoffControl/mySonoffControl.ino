@@ -4,10 +4,23 @@
 #include <ESP8266WiFi.h>  // ESP8266 Wifi library
 #include <PubSubClient.h> // MQTT library
 
+// These libraries are used to synch the controller time with
+// internet time
+#include <WifiUDP.h>
+#include <NTPClient.h>
+#include <Time.h>
+#include <TimeLib.h>
+#include <Timezone.h>
+
+
 #include "WifiSettings.h"
 //**************************************************
 // MQTT Settings
 #define mqtt_server "192.168.1.25"
+// Used to get and convert internet time to local time
+#define NTP_OFFSET   60 * 60      // In seconds
+#define NTP_INTERVAL 60 * 1000    // In miliseconds
+#define NTP_ADDRESS  "us.pool.ntp.org"  
 
 // MQTT Commands
 // Each command is made up of a topic where the first 
@@ -26,9 +39,11 @@ static char CMD_returnVerNum[] = "xxxx/returnVerNum";
 static int LEN_returnVerNum = 17;
 static char CMD_returnRelayState[] = "xxxx/returnRelayState";
 static int LEN_returnRelayState = 21;
+
 //**************************************************
 // Global variables
 static unsigned long currentms; 
+static unsigned long lastSync;
 
 static byte mac[6];             
 static char myName[] = "xxxx\0";
@@ -51,6 +66,8 @@ const byte relayPin = 12;
 // Network declarations
 WiFiClient espClient;
 PubSubClient client(espClient);
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, NTP_ADDRESS, NTP_OFFSET, NTP_INTERVAL);
 
 //**************************************************
 // Helper function to convert mac address bytes to chars
@@ -61,6 +78,37 @@ char convertHexToChar(byte in) {
     return in+55;
 }
 
+//**************************************************
+// Internet time
+// See simpleGetTimeExample for better descriptions of what's going
+//  on in this function.
+static unsigned long epochTime;
+static time_t localTime, utc;
+static TimeChangeRule usEDT = {"EDT", Second, Sun, Mar, 2, -300};  //UTC - 5 hours - change this as needed
+static TimeChangeRule usEST = {"EST", First, Sun, Nov, 2, -360};   //UTC - 6 hours - change this as needed
+Timezone usEastern(usEDT, usEST);
+const char * ampm[] = {"AM", "PM"} ;
+bool establishLocalTime() {
+  if (WiFi.status() == WL_CONNECTED) { 
+    Serial.println("Getting internet time");  
+    timeClient.update();
+    epochTime =  timeClient.getEpochTime();
+    utc = epochTime;
+    localTime = usEastern.toLocal(utc);
+    Serial.print("Current time is ");Serial.print(hourFormat12(localTime));
+    Serial.print(":");Serial.print(minute(localTime));
+    Serial.print(":");Serial.print(second(localTime));
+    Serial.print(" ");Serial.print(ampm[isPM(localTime)]);
+    Serial.print(" (");Serial.print(localTime);Serial.println(")");
+    lastSync = currentms/1000;
+    return true;
+  }
+  else 
+  {
+    Serial.println("Getting internet time failed");
+    return false;
+  }
+}
 //**************************************************
 // MQTT reconnect function.
 void reconnect() {
@@ -76,6 +124,7 @@ void reconnect() {
       client.subscribe(CMD_setRelay);
       client.subscribe(CMD_returnVerNum);
       client.subscribe(CMD_returnRelayState);
+      //client.subscribe(CMD_aliveNotice);
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -217,9 +266,13 @@ void setup() {
     CMD_returnVerNum[i] = myName[i];
     CMD_returnRelayState[i] = myName[i];
   }
+  Serial.println(CMD_setRelay);
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
-
+  currentms = millis();
+  while(!broadcastAlive())
+    {establishLocalTime();}
+  
 }
 
 //=============================================================
@@ -229,10 +282,10 @@ const long blinkRate = 250;
 unsigned long prevCheckButton_ms = 0;
 const int checkButtonRate = 1000;
 unsigned long lastPress_ms = 0;
-unsigned long prevSynchTime_ms = 0;
 unsigned long prevreconnect_ms = 0;
 const long reconnectRate = 5000;
-
+unsigned long prevSynchTime_ms = 0;
+const int synchTimeRate = 5*60*1000;
 
 void loop() {
   // get current time tick
@@ -245,6 +298,14 @@ void loop() {
     handleBlink();
   }
 
+// Sync time
+  if (currentms - prevSynchTime_ms >= synchTimeRate)
+  {
+    prevSynchTime_ms = currentms;
+    establishLocalTime();
+    while(!broadcastAlive())
+      {establishLocalTime();}
+  }
 
   // Check to see if push button is pressed, timing on this
   //  is such as to prevent switch bounce from triggering 
@@ -298,6 +359,7 @@ void handleBlink() {
   digitalWrite(ledPin, ledState);
 }
 
+// Return relay state
 static char relayPayload[] = "x\0";
 static char relayTopic[] = "xxxx/relayState\0";
 void broadcastRelayState()
@@ -318,5 +380,36 @@ void broadcastRelayState()
   client.publish(relayTopic, relayPayload, true);
 }
 
+// Broadcast I'm alive message
+static char alivePayload[] = "xxxxxxxxxx\0";
+static char aliveTopic[] = "lastCheckin/xxxx\0";
+static int timeSinceLastSync;
+bool broadcastAlive()
+{
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
 
+  // Convert local stored time to character string
+  timeSinceLastSync = currentms/1000-lastSync;
+  itoa(localTime+timeSinceLastSync,alivePayload,10);
+
+  for (int i = 0;i < 4;i++)
+    {aliveTopic[i+12] = myName[i];}
+  
+  //for (int i = 0;i < 10;i++)
+  //  {alivePayload[i] = myName[i];}
+
+  Serial.print("  Topic: ");Serial.println(aliveTopic);
+  Serial.print("Payload: ");Serial.println(alivePayload);
+
+  // Occasionally the number returned from time sync is malformed and
+  //  low. This is just an arbitrary cap to prevent transmission in such 
+  //  cases.
+  if(localTime+timeSinceLastSync < 1557051)
+  {return false;}
+  else
+  {client.publish(aliveTopic, alivePayload, true);return true;}
+}
 //=============================================================
