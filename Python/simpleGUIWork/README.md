@@ -1,5 +1,11 @@
 # GUI on a Pi TFT display
 
+## NOTE: Code may be broken
+
+The code in this section is, at this point, just me messing around with Glade and Python GUIs. A lot of it is broken.
+
+Now that I know what I'm doing (sort of), going forward I will be copying various parts over to a here (link coming soon) with proper version control and documentation.
+
 ## Hardware
 
 * Rasperry Pi B+
