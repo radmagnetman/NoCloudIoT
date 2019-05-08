@@ -1,0 +1,2 @@
+5EA9/firmwareVer
+5EA9/relayState

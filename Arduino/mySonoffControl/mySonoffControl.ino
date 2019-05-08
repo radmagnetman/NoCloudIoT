@@ -193,9 +193,10 @@ void callback(char* topic, byte* thisPayload, unsigned int lPayload) {
     {Serial.println("ON");statePayload[0] = '1';}
     else
     {Serial.println("OFF");statePayload[0] = '0';}
-    for (int i = 0;i < 4;i++)
+    /*for (int i = 0;i < 4;i++)
       stateTopic[i] = myName[i];
-    client.publish(stateTopic, statePayload, true);
+    client.publish(stateTopic, statePayload, true);*/
+    broadcastRelayState();
   }
   else
   {Serial.println("Unrecognized command via MQTT: ");}
